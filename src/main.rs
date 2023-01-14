@@ -1,19 +1,14 @@
-use actix_web::{get, post, App, HttpResponse, HttpServer, Responder};
+use salvo::prelude::*;
 
-#[get("/")]
-async fn hello() -> impl Responder {
-    HttpResponse::Ok().body("Hello world!")
+#[handler]
+async fn hello_world() -> &'static str {
+    "Test from Salvo"
 }
 
-#[post("/echo")]
-async fn echo(req_body: String) -> impl Responder {
-    HttpResponse::Ok().body(req_body)
-}
-
-#[actix_web::main]
-async fn main() -> std::io::Result<()> {
-    HttpServer::new(|| App::new().service(hello).service(echo))
-        .bind(("127.0.0.1", 8080))?
-        .run()
-        .await
+#[tokio::main]
+async fn main() {
+    let router = Router::new().get(hello_world);
+    Server::new(TcpListener::bind("127.0.0.1:5000"))
+        .serve(router)
+        .await;
 }
