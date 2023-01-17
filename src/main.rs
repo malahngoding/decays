@@ -39,7 +39,7 @@ async fn main() {
 async fn echo() -> impl IntoResponse {
     let mut rng = rand::thread_rng();
     let value: u64 = rng.gen_range(1..10);
-    let res = TrackNet { data: value };
+    let res = GiveRandomNumber { data: value };
     return (StatusCode::OK, Json(res));
 }
 
@@ -74,7 +74,7 @@ async fn verify_handshake(Json(payload): Json<VerifyUser>) -> impl IntoResponse 
 /* TYPES */
 
 #[derive(Serialize)]
-struct TrackNet {
+struct GiveRandomNumber {
     data: u64,
 }
 
