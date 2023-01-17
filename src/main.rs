@@ -1,108 +1,58 @@
 use axum::{
-    http::StatusCode,
-    http::{HeaderValue, Method},
-    response::IntoResponse,
+    extract::Extension,
     routing::{get, post},
-    Json, Router,
+    Router,
 };
-use bcrypt::{hash, verify};
-use rand::prelude::*;
-use serde::{Deserialize, Serialize};
-use std::net::SocketAddr;
-use tower_http::cors::CorsLayer;
+use once_cell::sync::Lazy;
+use sqlx::postgres::PgPoolOptions;
+use tower_http::cors::{Any, CorsLayer};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+// import module
+mod controllers;
+mod error;
+mod models;
+mod utils;
+
+// secret key for JWT token
+static KEYS: Lazy<models::auth::Keys> = Lazy::new(|| {
+    let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "Your secret here".to_owned());
+    models::auth::Keys::new(secret.as_bytes())
+});
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
-    // Routers
-    let app = Router::new()
-        .route("/echo", get(echo))
-        .route("/auth/connect", post(create_user))
-        .route("/auth/handshake", post(verify_handshake))
-        .layer(
-            CorsLayer::new()
-                .allow_origin("http://localhost:3500".parse::<HeaderValue>().unwrap())
-                .allow_methods([Method::GET]),
-        );
+    // let durl = std::env::var("DATABASE_URL").expect("set DATABASE_URL env variable");
+    let durl = "postgresql://postgres:@localhost:5432/instead";
+    // initialize tracing
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::new(
+            std::env::var("RUST_LOG").unwrap_or_else(|_| "axum_api=debug".into()),
+        ))
+        .with(tracing_subscriber::fmt::layer())
+        .init();
 
-    // App
-    let addr = SocketAddr::from(([127, 0, 0, 1], 5000));
+    let cors = CorsLayer::new().allow_origin(Any);
+
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&durl)
+        .await
+        .expect("unable to connect to database");
+
+    let app = Router::new()
+        .route("/echo", get(controllers::info::route_info))
+        .route("/auth/handshake", post(controllers::auth::login))
+        .route("/auth/connect", post(controllers::auth::register))
+        //only loggedin user can access this route
+        .route("/user/profile", post(controllers::user::user_profile))
+        .layer(cors)
+        .layer(Extension(pool));
+
+    let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 5000));
     tracing::debug!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
-        .unwrap();
-}
-
-/* CONTROLLERS */
-
-async fn echo() -> impl IntoResponse {
-    let mut rng = rand::thread_rng();
-    let value: u64 = rng.gen_range(1..10);
-    let res = GiveRandomNumber { data: value };
-    return (StatusCode::OK, Json(res));
-}
-
-async fn create_user(Json(payload): Json<CreateUser>) -> impl IntoResponse {
-    let user = User {
-        id: 1,
-        username: payload.username,
-        password: hash_password(&payload.password),
-    };
-
-    return (StatusCode::CREATED, Json(user));
-}
-
-async fn verify_handshake(Json(payload): Json<VerifyUser>) -> impl IntoResponse {
-    let hashed = hash_password(&payload.password);
-    let status: String;
-    if verify_password(&hashed, &payload.password) {
-        status = String::from("GOOD");
-    } else {
-        status = String::from("BAD");
-    }
-
-    let user = User {
-        id: 1,
-        username: payload.username,
-        password: String::from(status),
-    };
-
-    return (StatusCode::CREATED, Json(user));
-}
-
-/* TYPES */
-
-#[derive(Serialize)]
-struct GiveRandomNumber {
-    data: u64,
-}
-
-#[derive(Deserialize)]
-struct CreateUser {
-    username: String,
-    password: String,
-}
-
-#[derive(Deserialize)]
-struct VerifyUser {
-    username: String,
-    password: String,
-}
-
-#[derive(Serialize)]
-struct User {
-    id: u64,
-    username: String,
-    password: String,
-}
-
-/* UTILS */
-
-fn hash_password(s: &String) -> String {
-    return hash(&s, 4).unwrap();
-}
-
-fn verify_password(hashed_str: &str, s: &str) -> bool {
-    return verify(s, &hashed_str).unwrap();
+        .expect("failed to start server");
 }
