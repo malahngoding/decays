@@ -44,3 +44,26 @@ pub fn hash_password(s: &String) -> String {
 pub fn verify_password(hashed_str: &str, s: &str) -> bool {
     return verify(s, &hashed_str).unwrap();
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn get_timestamp_8_hours_from_now_test() {
+        let second = get_timestamp_8_hours_from_now();
+        assert_ne!(second, 1);
+    }
+    #[test]
+    fn hash_password_test() {
+        let password = "1234qwer!!".to_owned();
+        let hashed_password = hash_password(&password);
+        assert_ne!(password.len(), hashed_password.len());
+    }
+    #[test]
+    fn verify_password_test() {
+        let password = "1234qwer!!".to_owned();
+        let hashed_password = hash_password(&password);
+        let verified = verify_password(&hashed_password, &password);
+        assert_eq!(verified, true);
+    }
+}

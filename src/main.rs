@@ -8,13 +8,11 @@ use sqlx::postgres::PgPoolOptions;
 use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-// import module
 mod controllers;
 mod error;
 mod models;
 mod utils;
 
-// secret key for JWT token
 static KEYS: Lazy<models::auth::Keys> = Lazy::new(|| {
     let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "Your secret here".to_owned());
     models::auth::Keys::new(secret.as_bytes())
@@ -24,7 +22,6 @@ static KEYS: Lazy<models::auth::Keys> = Lazy::new(|| {
 async fn main() {
     // let durl = std::env::var("DATABASE_URL").expect("set DATABASE_URL env variable");
     let durl = "postgresql://postgres:@localhost:5432/instead";
-    // initialize tracing
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::new(
             std::env::var("RUST_LOG").unwrap_or_else(|_| "axum_api=debug".into()),
@@ -41,10 +38,11 @@ async fn main() {
         .expect("unable to connect to database");
 
     let app = Router::new()
+        // Public Route
         .route("/echo", get(controllers::info::route_info))
         .route("/auth/handshake", post(controllers::auth::login))
         .route("/auth/connect", post(controllers::auth::register))
-        //only loggedin user can access this route
+        // Protected
         .route("/user/profile", post(controllers::user::user_profile))
         .layer(cors)
         .layer(Extension(pool));

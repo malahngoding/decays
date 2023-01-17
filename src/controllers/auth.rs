@@ -14,12 +14,10 @@ pub async fn login(
     Json(credentials): Json<models::auth::User>,
     Extension(pool): Extension<PgPool>,
 ) -> Result<Json<Value>, AppError> {
-    // check if email or password is a blank string
     if credentials.email.is_empty() || credentials.password.is_empty() {
         return Err(AppError::MissingCredential);
     }
 
-    // get the user for the email from database
     let user = sqlx::query_as::<_, models::auth::User>(
         "SELECT email, password FROM users where email = $1",
     )
@@ -55,12 +53,10 @@ pub async fn register(
     Json(credentials): Json<models::auth::User>,
     Extension(pool): Extension<PgPool>,
 ) -> Result<Json<Value>, AppError> {
-    // check if email or password is a blank string
     if credentials.email.is_empty() || credentials.password.is_empty() {
         return Err(AppError::MissingCredential);
     }
 
-    // get the user for the email from database
     let user = sqlx::query_as::<_, models::auth::User>(
         "SELECT email, password FROM users where email = $1",
     )
@@ -73,7 +69,6 @@ pub async fn register(
     })?;
 
     if let Some(_) = user {
-        //if a user with email already exits send error
         return Err(AppError::UserAlreadyExits);
     }
 
