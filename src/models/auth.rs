@@ -2,12 +2,14 @@ use jsonwebtoken::{DecodingKey, EncodingKey};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
 pub struct User {
     pub email: String,
     pub password: String,
 }
 
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Claims {
     pub email: String,
     pub exp: u64,
