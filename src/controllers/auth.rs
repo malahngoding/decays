@@ -50,17 +50,21 @@ pub async fn login(
 }
 
 pub async fn register(
-    Json(credentials): Json<models::auth::User>,
+    Json(credentials): Json<models::auth::RegisterUser>,
     Extension(pool): Extension<PgPool>,
 ) -> Result<Json<Value>, AppError> {
-    if credentials.email.is_empty() || credentials.password.is_empty() {
+    if credentials.email.is_empty()
+        || credentials.password.is_empty()
+        || credentials.username.is_empty()
+    {
         return Err(AppError::MissingCredential);
     }
 
-    let user = sqlx::query_as::<_, models::auth::User>(
-        "SELECT email, password FROM users where email = $1",
+    let user = sqlx::query(
+        "SELECT email, username, password FROM users where (email = $1 or username = $2)",
     )
     .bind(&credentials.email)
+    .bind(&credentials.username)
     .fetch_optional(&pool)
     .await
     .map_err(|err| {
@@ -72,8 +76,9 @@ pub async fn register(
         return Err(AppError::UserAlreadyExits);
     }
 
-    let result = sqlx::query("INSERT INTO users (email, password) values ($1, $2)")
+    let result = sqlx::query("INSERT INTO users (email, username, password) values ($1, $2, $3)")
         .bind(&credentials.email)
+        .bind(&credentials.username)
         .bind(hash_password(&credentials.password))
         .execute(&pool)
         .await
