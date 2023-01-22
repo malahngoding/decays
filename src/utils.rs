@@ -1,4 +1,5 @@
 use bcrypt::{hash, verify};
+use regex::Regex;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use axum::{
@@ -45,6 +46,15 @@ pub fn verify_password(hashed_str: &str, s: &str) -> bool {
     return verify(s, &hashed_str).unwrap();
 }
 
+pub fn is_valid_email(string: &str) -> bool {
+    println!("{}", string);
+    let email_regex = Regex::new(
+        r"^([a-z0-9_+]([a-z0-9_+.]*[a-z0-9_+])?)@([a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,6})",
+    )
+    .unwrap();
+    return email_regex.is_match(string);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -65,5 +75,29 @@ mod tests {
         let hashed_password = hash_password(&password);
         let verified = verify_password(&hashed_password, &password);
         assert_eq!(verified, true);
+    }
+    #[test]
+    fn is_valid_email_test() {
+        let valid_email_addresses = [
+            "foo@bar.com",
+            "foo.bar42@c.com",
+            "42@c.com",
+            "f@42.co",
+            "foo@4-2.team",
+            "foo_bar@bar.com",
+            "_bar@bar.com",
+            "foo_@bar.com",
+            "foo+bar@bar.com",
+            "+bar@bar.com",
+            "foo+@bar.com",
+            "foo.lastname@bar.com",
+        ];
+        let invalid_email_addresses = ["foo at bar.com", ".x@c.com", "x.@c.com"];
+        for email_address in &valid_email_addresses {
+            assert_eq!(is_valid_email(email_address), true);
+        }
+        for email_address in &invalid_email_addresses {
+            assert_eq!(is_valid_email(email_address), false);
+        }
     }
 }

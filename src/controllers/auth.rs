@@ -6,7 +6,7 @@ use sqlx::PgPool;
 use crate::{
     error::AppError,
     models::{self, auth::Claims},
-    utils::{get_timestamp_8_hours_from_now, hash_password, verify_password},
+    utils::{get_timestamp_8_hours_from_now, hash_password, is_valid_email, verify_password},
     KEYS,
 };
 
@@ -53,6 +53,10 @@ pub async fn register(
     Json(credentials): Json<models::auth::RegisterUser>,
     Extension(pool): Extension<PgPool>,
 ) -> Result<Json<Value>, AppError> {
+    if !is_valid_email(&credentials.email) {
+        return Err(AppError::InvalidEmail);
+    }
+
     if credentials.email.is_empty()
         || credentials.password.is_empty()
         || credentials.username.is_empty()

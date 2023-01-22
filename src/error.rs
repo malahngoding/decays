@@ -4,6 +4,7 @@ use serde_json::json;
 #[derive(Debug)]
 pub enum AppError {
     InvalidToken,
+    InvalidEmail,
     WrongCredential,
     MissingCredential,
     TokenCreation,
@@ -25,6 +26,7 @@ impl IntoResponse for AppError {
             Self::WrongCredential => (StatusCode::UNAUTHORIZED, "wrong credentials"),
             Self::UserDoesNotExist => (StatusCode::UNAUTHORIZED, "User does not exist"),
             Self::UserAlreadyExits => (StatusCode::BAD_REQUEST, "User already exists"),
+            Self::InvalidEmail => (StatusCode::BAD_REQUEST, "invalid email provided"),
         };
         (status, Json(json!({ "error": err_msg }))).into_response()
     }
